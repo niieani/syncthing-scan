@@ -42,6 +42,7 @@ type traceEvent struct {
 	Path          string `json:"path,omitempty"`
 	Kind          string `json:"kind,omitempty"`
 	Reason        string `json:"reason,omitempty"`
+	Pattern       string `json:"pattern,omitempty"`
 	Decision      string `json:"decision,omitempty"`
 	CanSkipDir    *bool  `json:"canSkipDir,omitempty"`
 	Normalized    string `json:"normalizedPath,omitempty"`
@@ -110,7 +111,13 @@ func formatTrace(e traceEvent) string {
 		return fmt.Sprintf("%s enter %s", base, e.Path)
 	case "skip":
 		if e.CanSkipDir != nil {
+			if e.Pattern != "" {
+				return fmt.Sprintf("%s skip %s (%s, pattern=%s, canSkipDir=%v)", base, e.Path, e.Reason, e.Pattern, *e.CanSkipDir)
+			}
 			return fmt.Sprintf("%s skip %s (%s, canSkipDir=%v)", base, e.Path, e.Reason, *e.CanSkipDir)
+		}
+		if e.Pattern != "" {
+			return fmt.Sprintf("%s skip %s (%s, pattern=%s)", base, e.Path, e.Reason, e.Pattern)
 		}
 		return fmt.Sprintf("%s skip %s (%s)", base, e.Path, e.Reason)
 	case "include":
@@ -118,6 +125,9 @@ func formatTrace(e traceEvent) string {
 	case "ignore":
 		if e.Message != "" {
 			return fmt.Sprintf("%s ignore %s (%s: %s)", base, e.Path, e.Reason, e.Message)
+		}
+		if e.Pattern != "" {
+			return fmt.Sprintf("%s ignore %s (%s, pattern=%s)", base, e.Path, e.Reason, e.Pattern)
 		}
 		return fmt.Sprintf("%s ignore %s (%s)", base, e.Path, e.Reason)
 	case "temp":
@@ -470,22 +480,24 @@ func walkTrace(ctx context.Context, ffs fs.Filesystem, matcher *ignore.Matcher, 
 			}
 		}
 
-		match := matcher.Match(normPath)
+		match, pat := matcher.MatchWithPattern(normPath)
 		if match.IsIgnored() {
 			canSkip := match.CanSkipDir()
 			out.emit(traceEvent{
 				Event:      "ignore",
 				Path:       nonNormPath,
 				Reason:     "pattern",
+				Pattern:    pat,
 				CanSkipDir: &canSkip,
 			})
-			ignored = append(ignored, itemEntry{Path: nonNormPath, Reason: "pattern"})
+			ignored = append(ignored, itemEntry{Path: nonNormPath, Reason: formatPatternReason(pat)})
 			if err != nil || match.CanSkipDir() || (info != nil && info.IsSymlink()) {
 				if info != nil && info.IsDir() {
 					out.emit(traceEvent{
 						Event:      "skip",
 						Path:       nonNormPath,
 						Reason:     "pattern",
+						Pattern:    pat,
 						CanSkipDir: &canSkip,
 					})
 				}
@@ -583,4 +595,11 @@ func normalizePath(path string) string {
 		return norm.NFD.String(path)
 	}
 	return norm.NFC.String(path)
+}
+
+func formatPatternReason(pattern string) string {
+	if pattern == "" {
+		return "pattern"
+	}
+	return "pattern: " + pattern
 }

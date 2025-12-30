@@ -233,22 +233,30 @@ func (m *Matcher) parseLocked(r io.Reader, file string) error {
 // we ensure native unicode normalisation on all entry points (scanning and from
 // protocol) - so no need to normalize when calling this, except e.g. in tests.
 func (m *Matcher) Match(file string) (result ignoreresult.R) {
+	result, _ = m.MatchWithPattern(file)
+	return result
+}
+
+// MatchWithPattern matches the patterns plus temporary and internal files,
+// returning the matching pattern string when applicable. The pattern string
+// is empty when there is no match or when the reason is internal/temporary.
+func (m *Matcher) MatchWithPattern(file string) (result ignoreresult.R, pattern string) {
 	switch {
 	case fs.IsTemporary(file):
-		return ignoreresult.IgnoreAndSkip
+		return ignoreresult.IgnoreAndSkip, ""
 
 	case fs.IsInternal(file):
-		return ignoreresult.IgnoreAndSkip
+		return ignoreresult.IgnoreAndSkip, ""
 
 	case file == ".":
-		return ignoreresult.NotIgnored
+		return ignoreresult.NotIgnored, ""
 	}
 
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
 	if len(m.patterns) == 0 {
-		return ignoreresult.NotIgnored
+		return ignoreresult.NotIgnored, ""
 	}
 
 	// Change backslashes to slashes (on Windows only)
@@ -256,14 +264,14 @@ func (m *Matcher) Match(file string) (result ignoreresult.R) {
 
 	if m.matches != nil {
 		// Check the cache for a known result.
-		res, ok := m.matches.get(file)
+		res, pat, ok := m.matches.get(file)
 		if ok {
-			return res
+			return res, pat
 		}
 
 		// Update the cache with the result at return time
 		defer func() {
-			m.matches.set(file, result)
+			m.matches.set(file, result, pattern)
 		}()
 	}
 
@@ -273,29 +281,29 @@ func (m *Matcher) Match(file string) (result ignoreresult.R) {
 	// anymore.
 	var lowercaseFile string
 	canSkipDir := true
-	for _, pattern := range m.patterns {
-		if canSkipDir && !pattern.allowsSkippingIgnoredDirs() {
+	for _, pat := range m.patterns {
+		if canSkipDir && !pat.allowsSkippingIgnoredDirs() {
 			canSkipDir = false
 		}
 
-		res := pattern.result
+		res := pat.result
 		if canSkipDir {
 			res = res.WithSkipDir()
 		}
-		if pattern.result.IsCaseFolded() {
+		if pat.result.IsCaseFolded() {
 			if lowercaseFile == "" {
 				lowercaseFile = strings.ToLower(file)
 			}
-			if pattern.match.Match(lowercaseFile) {
-				return res
+			if pat.match.Match(lowercaseFile) {
+				return res, pat.String()
 			}
-		} else if pattern.match.Match(file) {
-			return res
+		} else if pat.match.Match(file) {
+			return res, pat.String()
 		}
 	}
 
 	// Default to not matching.
-	return ignoreresult.NotIgnored
+	return ignoreresult.NotIgnored, ""
 }
 
 // Lines return a list of the unprocessed lines in .stignore at last load
