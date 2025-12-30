@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ink: 15 22 34;
+    --accent: 10 132 148;
+    --panel: 255 255 255;
+    --bg: 241 236 228;
+    --bg-accent: 227 239 234;
+
+    @apply font-[\"Space_Grotesk\"] text-[rgb(var(--ink))] bg-[rgb(var(--bg))];
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply m-0 overflow-hidden;
+    background: radial-gradient(circle at 20% 20%, rgba(227, 239, 234, 0.8), transparent 55%),
+      radial-gradient(circle at 80% 10%, rgba(252, 243, 220, 0.7), transparent 45%),
+      linear-gradient(135deg, rgba(241, 236, 228, 1), rgba(233, 240, 242, 1));
+  }
+
+  code,
+  .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+  }
+}
+
+@layer utilities {
+  .bg-app {
+    background-color: rgb(var(--bg));
+  }
+  .bg-panel {
+    background-color: rgba(var(--panel), 0.92);
+  }
+  .text-ink {
+    color: rgb(var(--ink));
+  }
+  .border-ink {
+    border-color: rgba(var(--ink), 0.2);
+  }
+  .border-accent {
+    border-color: rgb(var(--accent));
+  }
+  .accent-accent {
+    accent-color: rgb(var(--accent));
+  }
+  .shadow-panel {
+    box-shadow: 0 30px 60px -40px rgba(19, 26, 33, 0.35), 0 12px 32px -16px rgba(19, 26, 33, 0.25);
+  }
+}
+
+.tree-row {
+  font-variation-settings: "wght" 500;
+}
+
+.tree-row {
+  animation: row-in 0.18s ease;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+  }
+}

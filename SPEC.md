@@ -78,7 +78,8 @@ Trace Events (only when --trace)
 - Skip: traversal is pruned for a directory (reason + canSkipDir).
 - Visit: file or directory examined.
 - Include: file or directory included in final list.
-- Ignore: item ignored (internal, temporary, pattern, error).
+- Ignore: item ignored (internal, temporary, pattern, error). When ignored by
+  a pattern, the pattern string is included in trace and JSON output.
 - WouldDeleteTemp: temporary file older than KeepTemporariesH (report-only).
 
 JSON Output
