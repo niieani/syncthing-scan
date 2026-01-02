@@ -41,35 +41,46 @@ Better:
 
 This allows the directory itself to be ignored and skipped.
 
-3) “Include a directory” implies include everything under it
-In Syncthing, many patterns are expanded automatically. For example:
-  !/.config
-expands to include the entire subtree. That makes it impossible to later
-exclude most of .config with a pattern like:
-  /.config/*
+3) Allowlisting a directory does not require "/**"
+Syncthing expands many patterns automatically. In practice:
+  !/folder
+is sufficient to allow the directory and its contents for scanning, and
+  !/folder/file
+is sufficient to allow a single file. You do not need a matching "!/folder/**"
+for allowlisting. Adding "/**" is redundant and makes ignore files noisier.
 
-If you want partial allowlist behavior, DO NOT allowlist the directory root.
-Instead:
-  !/.config/atuin/**
-  !/.config/git/**
-  (etc)
-and keep “/.config/*” at the end of the allowlist section.
+If you want partial allowlisting (e.g. only a few subfolders under .config),
+do NOT allowlist the .config root. Instead, list only the subpaths you want:
+  !/.config/atuin
+  !/.config/git
+  !/.config/zed
+  !/.config/starship.toml
 
-4) The default “exclude everything” pattern expands
+4) Use "/folder" vs "/folder/" intentionally
+For performance-focused ignores (skip traversal), use:
+  /folder
+This tells Syncthing it can skip the directory entirely.
+
+For ignores where traversal should still happen (e.g., you need to reach a
+later unignore), use:
+  /folder/
+This ignores the directory entry but keeps traversal possible.
+
+5) The default “exclude everything” pattern expands
 An allowlist setup often ends with:
   /*
 This does not just match top-level entries. Syncthing expands it so it also
 matches deeper paths. That’s fine, but it means you cannot rely on trailing
 “/*” to exclude subtrees after you have already allowed something.
 
-5) Included files are processed in-place
+6) Included files are processed in-place
 If .stignore contains:
   #include .stperfignore
   #include .stallowlist
 the contents of those files are read as if they appeared directly at that
 point. The order of includes matters.
 
-6) Pattern order affects “skip” vs “traverse”
+7) Pattern order affects “skip” vs “traverse”
 Patterns that allow skipping are those that:
 - Ignore (not “!”)
 - Are rooted and do not include additional path segments after the root
@@ -81,16 +92,16 @@ Example of “skip-capable”:
 Example of “not skip-capable”:
   /Library/**
 
-7) The pattern that causes ignore is not always what you think
+8) The pattern that causes ignore is not always what you think
 When multiple patterns could match a path, the first match wins. This often
 means a broad rule (e.g., “/*”) wins over a more specific rule that appears
 later. Always order the most important behavior first.
 
-8) Internal files are always ignored
+9) Internal files are always ignored
 .stignore, .stfolder, and .stversions are internal and ignored regardless of
 your patterns. You do not need to add patterns for them.
 
-9) Global ignores still apply inside unignored directories
+10) Global ignores still apply inside unignored directories
 Including a global ignore list (like .stglobalignore) means those patterns
 apply everywhere unless a later “!” explicitly unignores them. Unignoring a
 directory does not unignore files inside it by default. For example, a
@@ -136,13 +147,12 @@ Home Folder Example (Simplified)
   /.m2
   /.pnpm-store
 
-  // skip node_modules everywhere
+  // skip node_modules everywhere (dir entry + contents)
   /**/node_modules
   /**/node_modules/**
 
   // skip cursor editor data
   /.cursor
-  /.cursor/**
 
 .stallowlist
   // root-level files
@@ -152,18 +162,17 @@ Home Folder Example (Simplified)
   !/.gitconfig
   !/.zshrc
 
-  // allow specific dot-directories
-  !/.agent-os/**
-  !/.codegpt/**
-  !/SwiftBar/**
-  !/bin/**
+  // allow specific dot-directories (no /** needed)
+  !/.agent-os
+  !/.codegpt
+  !/SwiftBar
+  !/bin
 
   // allow partial .config content (no “!/.config”!)
-  !/.config/atuin/**
-  !/.config/git/**
-  !/.config/zed/**
+  !/.config/atuin
+  !/.config/git
+  !/.config/zed
   !/.config/starship.toml
-  /.config/*
 
   // allow all SSH keys
   !/.ssh
